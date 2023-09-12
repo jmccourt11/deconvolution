@@ -14,7 +14,7 @@ from skimage.feature import peak_local_max
 from skimage import img_as_float
 from skimage import restoration
 from scipy import ndimage as ndi
-import azimuthal_avg as aa
+#import azimuthal_avg as aa
 from IPython.display import clear_output
 from tqdm import tqdm
 
@@ -36,6 +36,7 @@ def load_h5py_dp(file):
         # preferred methods to get dataset values:
         ds_obj = f[a_group_key]      # returns as a h5py dataset object
         ds_arr = f[a_group_key][()]  # returns as a numpy array
+        f.close()
     return ds_arr,sdd,wavelength
         
 
@@ -196,16 +197,14 @@ def avg_frames(dp_list,total_frames,live_plot=False):
     #plt.show()
     return total/total_frames
 
-device=3
-with cp.cuda.Device(device):
-    if __name__ == '__main__':
-        directory='dps/fly015_temp/'
+def run(dp,probe,device=0):
+    with cp.cuda.Device(device):
         #load in diffraction patterns (dps) data, including sample-to-detector distance (sdd) and xray wavelength (wavelength)
-        dps,sdd,wavelength = load_h5py_dp('/home/beams/B304014/ptychosaxs/data/fly015/data_roibit_Ndp400_dp.hdf5')
+        dps,sdd,wavelength = load_h5py_dp(dp)
         
         #load in point-spread function (psf) (the probe) data, *npy data file
         #the reconstructed probe from ptychography data
-        psf_real = np.load('/home/beams/B304014/ptychosaxs/data/fly015/fly015_probe_N256.npy',allow_pickle=True)
+        psf_real = np.load(probe,allow_pickle=True)
 
         #plt.imshow(np.abs(psf_real)) #magnitude
         #plt.imshow(np.angle(psf_real)) #phase
@@ -305,8 +304,7 @@ with cp.cuda.Device(device):
         dp_cpu=dp.get()
         psf_cpu=psf.get()
         plotter_rgb([psf_cpu,dp_cpu,result_cpu],['psf','dp','recovered'],log=True)
-        cv2.imwrite('dp.png',dp_cpu)
-        np.save('dp.npy',dp_cpu)
-        cv2.imwrite('recovered.png',result_cpu)
-        np.save('recovered.npy',result_cpu)
-        
+        # cv2.imwrite('dp.png',dp_cpu)
+        # np.save('dp.npy',dp_cpu)
+        # cv2.imwrite('recovered.png',result_cpu)
+        # np.save('recovered.npy',result_cpu)

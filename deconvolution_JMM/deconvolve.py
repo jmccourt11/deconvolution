@@ -10,13 +10,14 @@ from time import perf_counter
 from scipy.special import jv
 import numpy as np
 import h5py
+from skimage.measure import profile_line
 from skimage.feature import peak_local_max
 from skimage import img_as_float
 from skimage import restoration
 from scipy import ndimage as ndi
-#import azimuthal_avg as aa
 from IPython.display import clear_output
 from tqdm import tqdm
+from scipy.signal import find_peaks
 
 
 
@@ -197,6 +198,93 @@ def avg_frames(dp_list,total_frames,live_plot=False):
     #plt.show()
     return total/total_frames
 
+
+
+def hor_line_profile(image, line):
+    start = (line, 0) #Start of the profile line row=line, col=0
+    end = (line, image.shape[1] - 1) #End of the profile line row=100, col=last
+    profile = profile_line(image, start, end)
+    fig, ax = plt.subplots(1, 2)
+    ax[0].set_title('Image (log)')
+    ax[0].imshow(image,norm=colors.LogNorm())
+    ax[0].plot([start[1], end[1]], [start[0], end[0]], 'r')
+    ax[1].set_title('Profile (log)')
+    ax[1].set_yscale('log')
+    ax[1].plot(profile)
+    peaks=find_peaks(profile,prominence=1,width=1.2,distance=18)
+    xs=np.linspace(0,image.shape[0],image.shape[0])
+    ax[0].scatter([xs[p] for p in peaks[0]],[line for p in peaks[0]],color='r',alpha=0.2)
+    ax[1].scatter([xs[p] for p in peaks[0]],[profile[p] for p in peaks[0]],color='r')
+
+
+def vert_line_profile(image, line):
+    start = (0,line) #Start of the profile line row=line, col=0
+    end = (image.shape[0] - 1,line) #End of the profile line row=100, col=last
+    profile = profile_line(image, start, end)
+    fig, ax = plt.subplots(1, 2)
+    ax[0].set_title('Image (log)')
+    ax[0].imshow(image,norm=colors.LogNorm())
+    ax[0].plot([start[1], end[1]], [start[0], end[0]], 'r')
+    ax[1].set_title('Profile (log)')
+    ax[1].set_yscale('log')
+    ax[1].plot(profile)
+    peaks=find_peaks(profile,prominence=1,width=1.2,distance=18)
+    xs=np.linspace(0,image.shape[0],image.shape[0])
+    ax[0].scatter([line for p in peaks[0]],[xs[p] for p in peaks[0]],color='r',alpha=0.2)
+    ax[1].scatter([xs[p] for p in peaks[0]],[profile[p] for p in peaks[0]],color='r')
+
+
+def center(gray_image):
+    # https://learnopencv.com/find-center-of-blob-centroid-using-opencv-cpp-python/
+    # convert the grayscale image to binary image
+    ret,thresh = cv2.threshold(gray_image,127,255,0)
+    # calculate moments of binary image
+    M = cv2.moments(thresh)
+    # calculate x,y coordinate of center
+    cX = int(M["m10"] / M["m00"])
+    cY = int(M["m01"] / M["m00"])
+    # put text and highlight the center
+    #cv2.circle(gray, (cX, cY), 5, (255, 255, 255), -1)
+    #cv2.putText(gray, "centroid", (cX - 25, cY - 25),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+    #plot calculated center and image
+    plt.imshow(gray_image,norm=colors.LogNorm())
+    plt.scatter(cX,cY,color='r')
+    return cX,cY
+
+def radial_average(image,cx,cy):
+    #https://stackoverflow.com/questions/48842320/what-is-the-best-way-to-calculate-radial-average-of-the-image-with-python
+    # create array of radii
+    x,y = np.meshgrid(np.arange(image.shape[1]),np.arange(image.shape[0]))
+    R = np.sqrt((x- cx)**2+(y-cy)**2)
+    # calculate the mean
+    dr=0.5 #half a pixel
+    f = lambda r : image[(R >= r-dr) & (R < r+dr)].mean()
+    r  = np.linspace(0,np.max(image.shape),num=np.max(image.shape))
+    mean = np.vectorize(f)(r)
+    # plot it
+    fig,ax=plt.subplots()
+    ax.plot(r,mean,norm=colors.LogNorm())
+    plt.xlabel('pixels from center')
+    plt.show()
+    return r,mean
+
+def plot_q_radial_avg(image):
+    #find center of image
+    cx,cy=center(image)
+    #calculate radial average of full image
+    pixels,intensity=radial_average(image,cx,cy)
+    #convert to q
+    sdd=2 #2m distance to detector from sample
+    wavelength=1.240*10**(-10) # wavelength of xray
+    pixel_size=200*10**(-6) #pixel linear dimension
+    thetas=[np.arctan(p*pixel_size/sdd)/2 for p in pixels]
+    q=[4*np.pi*np.sin(th)/wavelength/(1*10**9) for th in thetas] # q in inverse nm
+    plt.loglog(q,intensity)
+    plt.xlabel('q (nm$^{-1}$)')
+    plt.show()
+
+
+
 def run(dp,probe,device=0):
     with cp.cuda.Device(device):
         #load in diffraction patterns (dps) data, including sample-to-detector distance (sdd) and xray wavelength (wavelength)
@@ -224,10 +312,10 @@ def run(dp,probe,device=0):
         count=0
         for dp in tqdm(dps[10:20]):
             #write dp to image file and load in the image
-            cv2.imwrite('dp.png',dp)
+            #cv2.imwrite('dp.png',dp)
         
             #process or done process ***
-            dp_image = cv2.imread('dp.png')
+            #dp_image = cv2.imread('dp.png')
             #dp_image=process_dp('dp.png')
         
             #convert images to gray scale
@@ -308,3 +396,4 @@ def run(dp,probe,device=0):
         # np.save('dp.npy',dp_cpu)
         # cv2.imwrite('recovered.png',result_cpu)
         # np.save('recovered.npy',result_cpu)
+        return result_cpu

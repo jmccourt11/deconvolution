@@ -18,6 +18,8 @@ from scipy import ndimage as ndi
 from IPython.display import clear_output
 from tqdm import tqdm
 from scipy.signal import find_peaks
+from scipy import signal
+from skimage.registration import phase_cross_correlation
 
 
 
@@ -284,6 +286,20 @@ def plot_q_radial_avg(image):
     plt.show()
 
 
+def correlate(im1,im2):
+    cx,cy=center(im1)
+    im1=im1[cx-50:cx+50,cy-50:cy+50]
+    im2=im2[cx-50:cx+50,cy-50:cy+50]
+    cor_max=signal.correlate2d(im1,im1,boundary='symm',mode='same')
+    cor=signal.correlate2d(im1,im2,boundary='symm',mode='same')-cor_max+1
+    pcc=phase_cross_correlation(im1,im2)
+    return cor.flatten()
+
+
+def mae(y1, y2):
+    y1, y2 = np.array(y1), np.array(y2)
+    return np.mean(np.abs(y1 - y2))
+
 
 def run(dp,probe,device=0):
     with cp.cuda.Device(device):
@@ -375,13 +391,21 @@ def run(dp,probe,device=0):
             
             count+=1
         
+        #filter diffraction pattern images by correlation
+        im_fixed=dps[6] #pick a diffraction image to compare others too for correlation
+        dps_filtered=[dp for dp in tqdm(dps[0:20]) if mae(correlate(im_fixed,dp),correlate(im_fixed,im_fixed))<22000000]
+        print(len(dps_filtered))
+        dps=dps_filtered
+        
         #SHOW PROGRESSION OF DECONVOLUTION WITH MORE DP FRAMES
         iterations=50
         num_frames=len(dps)
         start=len(dps)-1
         psf=cp.asarray(psf)
         #for i in tqdm(range(start,len(dps[:num_frames]))):
+        
         for i in range(start,len(dps[:num_frames])):
+            
             dp=cp.asarray(avg_frames(dps[0:i],i))
             result = RL_deconvblind(dp, psf, iterations)
             result_cpu=result.get()

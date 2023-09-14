@@ -4,21 +4,24 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 from cupyx.scipy.signal import convolve2d as conv2
 #from cupy.fft import fftn
-from scipy.fftpack import fft2
-import time
 from time import perf_counter
-from scipy.special import jv
 import numpy as np
 import h5py
-from skimage.measure import profile_line
-from skimage.feature import peak_local_max
-from skimage import img_as_float
-from skimage import restoration
-from scipy import ndimage as ndi
+
 from IPython.display import clear_output
+
 from tqdm import tqdm
-from scipy.signal import find_peaks
+
+from scipy import ndimage as ndi
 from scipy import signal
+from scipy.fftpack import fft2
+from scipy.signal import find_peaks
+from scipy.special import jv
+
+from skimage import img_as_float, restoration
+from skimage import restoration
+from skimage.feature import peak_local_max
+from skimage.measure import profile_line
 from skimage.registration import phase_cross_correlation
 
 
@@ -28,29 +31,30 @@ from skimage.registration import phase_cross_correlation
 def load_h5py_dp(file):
     #file format for diffraction pattern data is hdf5 (hierarchical data format)
     with h5py.File(file,"r") as f:    
-        # Print all root level object names (aka keys) 
+        # Print all root level object names (aka keys) of hdf5 file
         # these can be group or dataset names 
         print("Keys: %s" % f.keys())
-        # get second object name/key
-        a_group_key = list(f.keys())[1]
-        sdd=f['detector_distance'][()][0]
-        wavelength=f['lambda'][()][0]
-        # print(f['ppX'][()].shape)
+        # get object names/keys for import information
+        dp_group_key = 'dp' #diffraction patterns (key)
+        sdd=f['detector_distance'][()][0] #sample to detector distance
+        wavelength=f['lambda'][()][0] #X-ray wavelength
         # preferred methods to get dataset values:
-        ds_obj = f[a_group_key]      # returns as a h5py dataset object
-        ds_arr = f[a_group_key][()]  # returns as a numpy array
+        ds_obj = f[dp_group_key]      # returns as a h5py dataset object
+        ds_arr = f[dp_group_key][()]  # returns as a numpy array
         f.close()
-    return ds_arr,sdd,wavelength
+    return ds_arr,sdd,wavelength #return tuple consisting of np.array of dps, sdd, wavelength
         
 
     
 def flip180(arr):
+    #inverts 2D array, used to invert probe array for Richardson Lucy deconvoltuion algorithm
     new_arr = arr.reshape(arr.size)
     new_arr = new_arr[::-1]
     new_arr = new_arr.reshape(arr.shape)
     return new_arr
 
-def normal(array):
+def normal_gray(array):
+    #normalize image to gray scale
     array = array/cp.amax(array)*255
     array = cp.where(array < 0,  0, array)
     array = cp.where(array > 255, 255, array)
@@ -58,7 +62,10 @@ def normal(array):
     return array
 
 def RL_deconvblind(img,PSF,iterations,verbose=False):
-    #print('Calculating deconvolution...')
+    #Richardson Lucy (RL) algorithm for deconvoluting a measured image with a known point-spread-function image to return underlying object image
+    if verbose:
+        print('Calculating deconvolution...')
+    #float32 type for diffraction pattern (img) and probe, point spread function (PSF)
     img = img.astype(cp.float32)
     PSF = PSF.astype(cp.float32)
     
@@ -66,6 +73,8 @@ def RL_deconvblind(img,PSF,iterations,verbose=False):
     a = np.nanmin(np.where(img<=0, np.nan, img))
     #replace <=0 values in image
     img = cp.where(img <= 0, a, img)
+    
+    #RL deconvolution iterations
     init_img = img
     PSF_hat = flip180(PSF)
     for i in range(iterations):
@@ -75,9 +84,11 @@ def RL_deconvblind(img,PSF,iterations,verbose=False):
         relative_blur = (img / est_conv)
         error_est = conv2(relative_blur,PSF_hat, 'same',boundary='symm')
         init_img = init_img* error_est
-    return init_img
+    return init_img #recovered, deconvoluted, underlying object image
 
 def roi(image):
+    #define a region of interest overwhich to perform deconvolution
+    #requires prompted raw input from the user: (startX, deltaX), (startY, deltaY)
     result=0
     not_satisfied=True
     while not_satisfied:
@@ -96,15 +107,13 @@ def roi(image):
         if s=='y':
             not_satisfied=False
             result=image_cropped
-    return result
+    return result #return roi (cropped) image
 
 def FT_image(image):
+    #calculate fourier transform of image with necessary shift to center result
     return np.abs(np.fft.fftshift(np.fft.fft2(image)))**2
 
-def load_data(dp,psf):
-    return dp,psf
-
-def plotter(images,labels,log=False):
+def plotter_gray(images,labels,log=False):
     # display n plots side by side
     n=len(images)
     fig, axes = plt.subplots(1, n, figsize=(8, 3))#, sharex=True, sharey=True)
@@ -118,7 +127,7 @@ def plotter(images,labels,log=False):
         ax[i].set_title(labels[i])
     plt.show()
     
-def plotter_rgb(images,labels,log=False):
+def plotter(images,labels,log=False):
     # display n plots side by side
     n=len(images)
     fig, axes = plt.subplots(1, n, figsize=(8, 3))#, sharex=True, sharey=True)
@@ -134,9 +143,10 @@ def plotter_rgb(images,labels,log=False):
     
 
 def gamma_manip(image, gamma):
-        result = np.uint8(cv2.pow(image / 255., gamma) * 255.)
-        return result 
-    
+    #increase contrast for gray scale image
+    result = np.uint8(cv2.pow(image / 255., gamma) * 255.)
+    return result 
+
     
 def peak_finder(dp_image_file):
     image=cv2.imread(dp_image_file)
@@ -169,40 +179,33 @@ def peak_converter(peaks):
     return q_hk,theta_hk
 
 def sum_frames(dp_list,total_frames,live_plot=False):
-    #diffraction patterns from hdf5_file
-    #total=0
+    #sum diffraction patterns from hdf5_file
     total=np.zeros(dp_list[0].shape)
-    #for dp in tqdm(dp_list[0:total_frames]):
     for dp in dp_list[0:total_frames]:
+        #plot result of summation for each frame
         if live_plot:
             clear_output(wait=True)
             plt.imshow(total,norm=colors.LogNorm())
             plt.show()
         total+=dp
-        #total/=len(dp_list)
-        #plt.pause(0.3)
-    #plt.imshow(total,norm=colors.LogNorm())
-    #plt.show()
-    return total
+    return total #returns total sum of dp frames
 
 def avg_frames(dp_list,total_frames,live_plot=False):
     #diffraction patterns from hdf5_file
     total=np.zeros(dp_list[0].shape)
     for dp in tqdm(dp_list[0:total_frames]):
+        #plot result of summation for each frame
         if live_plot:
             clear_output(wait=True)
             plt.imshow(total,norm=colors.LogNorm())
             plt.show()
         total+=dp
-        #total/=len(dp_list)
-        #plt.pause(0.3)
-    #plt.imshow(total,norm=colors.LogNorm())
-    #plt.show()
-    return total/total_frames
+    return total/total_frames  #returns total sum of dp frames/number of summed frames
 
 
 
 def hor_line_profile(image, line):
+    #horizontal line profile of image
     start = (line, 0) #Start of the profile line row=line, col=0
     end = (line, image.shape[1] - 1) #End of the profile line row=100, col=last
     profile = profile_line(image, start, end)
@@ -220,6 +223,7 @@ def hor_line_profile(image, line):
 
 
 def vert_line_profile(image, line):
+    #vertical line profile of image
     start = (0,line) #Start of the profile line row=line, col=0
     end = (image.shape[0] - 1,line) #End of the profile line row=100, col=last
     profile = profile_line(image, start, end)
@@ -245,9 +249,6 @@ def center(gray_image):
     # calculate x,y coordinate of center
     cX = int(M["m10"] / M["m00"])
     cY = int(M["m01"] / M["m00"])
-    # put text and highlight the center
-    #cv2.circle(gray, (cX, cY), 5, (255, 255, 255), -1)
-    #cv2.putText(gray, "centroid", (cX - 25, cY - 25),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
     #plot calculated center and image
     plt.imshow(gray_image,norm=colors.LogNorm())
     plt.scatter(cX,cY,color='r')
@@ -276,6 +277,7 @@ def plot_q_radial_avg(image):
     #calculate radial average of full image
     pixels,intensity=radial_average(image,cx,cy)
     #convert to q
+    #example using realistic sdd, wavelength, pixel-size
     sdd=2 #2m distance to detector from sample
     wavelength=1.240*10**(-10) # wavelength of xray
     pixel_size=200*10**(-6) #pixel linear dimension
@@ -287,16 +289,18 @@ def plot_q_radial_avg(image):
 
 
 def correlate(im1,im2):
+    #calcuate 2D correlation of two images
     cx,cy=center(im1)
     im1=im1[cx-50:cx+50,cy-50:cy+50]
     im2=im2[cx-50:cx+50,cy-50:cy+50]
     cor_max=signal.correlate2d(im1,im1,boundary='symm',mode='same')
     cor=signal.correlate2d(im1,im2,boundary='symm',mode='same')-cor_max+1
     pcc=phase_cross_correlation(im1,im2)
-    return cor.flatten()
+    return cor.flatten() #returned flattened 1D array of 2D correlation
 
 
 def mae(y1, y2):
+    #mean aboslute error of two arrays, used for comparing flattened correlation functions
     y1, y2 = np.array(y1), np.array(y2)
     return np.mean(np.abs(y1 - y2))
 
@@ -376,9 +380,9 @@ def run(dp,probe,device=0):
         
             # plt.imshow(result_cpu,norm=colors.LogNorm())
             # plt.show()
-            plotter_rgb([psf_cpu,dp_cpu,result_cpu],['psf','dp','recovered'],log=True)
+            plotter([psf_cpu,dp_cpu,result_cpu],['psf','dp','recovered'],log=True)
             bkg=10 #to get rid of zeros
-            plotter_rgb([psf_cpu+bkg,dp_cpu+bkg,result_cpu+bkg],['psf','dp','recovered'],log=True)
+            plotter([psf_cpu+bkg,dp_cpu+bkg,result_cpu+bkg],['psf','dp','recovered'],log=True)
             # #save image
             # save='y'
             # if save == 'y':
@@ -393,7 +397,7 @@ def run(dp,probe,device=0):
         
         #filter diffraction pattern images by correlation
         im_fixed=dps[6] #pick a diffraction image to compare others too for correlation
-        dps_filtered=[dp for dp in tqdm(dps[0:20]) if mae(correlate(im_fixed,dp),correlate(im_fixed,im_fixed))<22000000]
+        dps_filtered=[dp for dp in tqdm(dps) if mae(correlate(im_fixed,dp),correlate(im_fixed,im_fixed))<22000000]
         print(len(dps_filtered))
         dps=dps_filtered
         
@@ -415,7 +419,7 @@ def run(dp,probe,device=0):
             #plt.pause(0.2)
         dp_cpu=dp.get()
         psf_cpu=psf.get()
-        plotter_rgb([psf_cpu,dp_cpu,result_cpu],['psf','dp','recovered'],log=True)
+        plotter([psf_cpu,dp_cpu,result_cpu],['psf','dp','recovered'],log=True)
         # cv2.imwrite('dp.png',dp_cpu)
         # np.save('dp.npy',dp_cpu)
         # cv2.imwrite('recovered.png',result_cpu)

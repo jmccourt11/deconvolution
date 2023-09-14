@@ -395,11 +395,11 @@ def run(dp,probe,device=0):
             
             count+=1
         
-        #filter diffraction pattern images by correlation
-        im_fixed=dps[6] #pick a diffraction image to compare others too for correlation
-        dps_filtered=[dp for dp in tqdm(dps) if mae(correlate(im_fixed,dp),correlate(im_fixed,im_fixed))<22000000]
-        print(len(dps_filtered))
-        dps=dps_filtered
+        # #filter diffraction pattern images by correlation
+        # im_fixed=dps[6] #pick a diffraction image to compare others too for correlation
+        # dps_filtered=[dp for dp in tqdm(dps) if mae(correlate(im_fixed,dp),correlate(im_fixed,im_fixed))<22000000]
+        # print(len(dps_filtered))
+        # dps=dps_filtered
         
         #SHOW PROGRESSION OF DECONVOLUTION WITH MORE DP FRAMES
         iterations=50

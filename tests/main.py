@@ -15,7 +15,7 @@ if __name__ == '__main__':
     
     dp_file='/home/beams/B304014/ptychosaxs/data/fly015/data_roibit_Ndp400_dp.hdf5'
     probe_file='/home/beams/B304014/ptychosaxs/data/fly015/fly015_probe_N256.npy'
-    #recovered=dc.run(dp_file,probe_file)
+    recovered=dc.run(dp_file,probe_file)
     #%%
     dc.load_h5py_dp(dp_file)
 # %%

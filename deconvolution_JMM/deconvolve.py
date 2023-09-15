@@ -321,12 +321,17 @@ def run(dp,probe,device=0):
         psf_real_mag_2=np.abs(psf_real)**2
         
         #fourier transform of reconstructed probe (reciprocal space)
-        psf=np.abs(np.fft.fftshift(np.fft.fft2(psf_real)))**2#,norm=colors.LogNorm())
+        #psf=np.abs(np.fft.fftshift(np.fft.fft2(psf_real)))**2 # amplitude i.,e., magnitude squared
+        psf=np.abs(np.fft.fftshift(np.fft.fft2(psf_real))) #sqrt i.e. magnitude
+        
         #cv2.imwrite(directory+'psf.png',psf)
         #psf=roi(psf) #FOR JUST CENTER FZP PATTERN 
                     #BEAM: x,y: 118 21
         psf=psf[118:139,118:139]
         #cv2.imwrite(directory+'psf.png',psf)
+        
+        dps=np.asarray([np.sqrt(dp) for dp in dps])
+        
         
         
         count=0

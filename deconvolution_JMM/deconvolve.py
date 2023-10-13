@@ -6,6 +6,8 @@ from cupyx.scipy.signal import convolve2d as conv2
 #from cupy.fft import fftn
 from time import perf_counter
 import numpy as np
+
+import hdf5plugin
 import h5py
 
 from IPython.display import clear_output
@@ -17,6 +19,7 @@ from scipy import signal
 from scipy.fftpack import fft2
 from scipy.signal import find_peaks
 from scipy.special import jv
+import scipy.io
 
 from skimage import img_as_float, restoration
 from skimage import restoration
@@ -307,35 +310,45 @@ def mae(y1, y2):
 
 def run(dp,probe,device=0):
     with cp.cuda.Device(device):
-        #load in diffraction patterns (dps) data, including sample-to-detector distance (sdd) and xray wavelength (wavelength)
-        dps,sdd,wavelength = load_h5py_dp(dp)
+        ##load in diffraction patterns (dps) data, including sample-to-detector distance (sdd) and xray wavelength (wavelength)
+        #dps,sdd,wavelength = load_h5py_dp(dp)
         
-        #load in point-spread function (psf) (the probe) data, *npy data file
-        #the reconstructed probe from ptychography data
-        psf_real = np.load(probe,allow_pickle=True)
+        dps=scipy.io.loadmat('/home/beams/B304014/ptychosaxs/chansong/ckim_data585_766.mat')
+        
+        # #load in point-spread function (psf) (the probe) data, *npy data file
+        # #the reconstructed probe from ptychography data
+        # psf_real = np.load(probe,allow_pickle=True)
+        psf_real=dps['dt'].T[0]
+        
 
-        #plt.imshow(np.abs(psf_real)) #magnitude
-        #plt.imshow(np.angle(psf_real)) #phase
+
+        # #plt.imshow(np.abs(psf_real)) #magnitude
+        # #plt.imshow(np.angle(psf_real)) #phase
         
-        #intensity (magnitude**2) of the reconstructed probe (real space)
-        psf_real_mag_2=np.abs(psf_real)**2
+        # #intensity (magnitude**2) of the reconstructed probe (real space)
+        # psf_real_mag_2=np.abs(psf_real)**2
         
-        #fourier transform of reconstructed probe (reciprocal space)
-        #psf=np.abs(np.fft.fftshift(np.fft.fft2(psf_real)))**2 # amplitude i.,e., magnitude squared
-        psf=np.abs(np.fft.fftshift(np.fft.fft2(psf_real))) #sqrt i.e. magnitude
+        # #fourier transform of reconstructed probe (reciprocal space)
+        # psf=np.abs(np.fft.fftshift(np.fft.fft2(psf_real)))**2 # amplitude i.,e., magnitude squared
+        # #psf=np.abs(np.fft.fftshift(np.fft.fft2(psf_real))) #sqrt i.e. magnitude
+        
+        psf=psf_real
         
         #cv2.imwrite(directory+'psf.png',psf)
-        #psf=roi(psf) #FOR JUST CENTER FZP PATTERN 
+        psf=roi(psf) #FOR JUST CENTER FZP PATTERN 
                     #BEAM: x,y: 118 21
-        psf=psf[118:139,118:139]
+        #psf=psf[118:139,118:139]
         #cv2.imwrite(directory+'psf.png',psf)
         
-        dps=np.asarray([np.sqrt(dp) for dp in dps])
+        
+        
+        
+        #dps=np.asarray([np.sqrt(dp) for dp in dps])
         
         
         
         count=0
-        for dp in tqdm(dps[10:20]):
+        for dp in tqdm(dps['dt'].T):
             #write dp to image file and load in the image
             #cv2.imwrite('dp.png',dp)
         

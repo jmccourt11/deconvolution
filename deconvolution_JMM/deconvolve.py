@@ -28,8 +28,8 @@ from skimage.measure import profile_line
 from skimage.registration import phase_cross_correlation
 
 
-
-
+import torch
+from torchvision import transforms
 
 def load_h5py_dp(file):
     #file format for diffraction pattern data is hdf5 (hierarchical data format)
@@ -64,7 +64,7 @@ def normal_gray(array):
     array = array.astype(cp.int16)
     return array
 
-def RL_deconvblind(img,PSF,iterations,verbose=False):
+def RL_deconvblind(img,PSF,iterations,verbose=False,TV=False):
     #Richardson Lucy (RL) algorithm for deconvoluting a measured image with a known point-spread-function image to return underlying object image
     if verbose:
         print('Calculating deconvolution...')
@@ -86,8 +86,24 @@ def RL_deconvblind(img,PSF,iterations,verbose=False):
         est_conv = conv2(init_img,PSF,'same', boundary='symm')
         relative_blur = (img / est_conv)
         error_est = conv2(relative_blur,PSF_hat, 'same',boundary='symm')
-        init_img = init_img* error_est
+        if TV:
+            alpha=0.001 #regularization term weight
+            tv_factor=cp.asarray(total_variation_term(init_img,alpha))
+            # print(init_img,error_est,tv_factor)
+            # plt.pause(2)
+            init_img=cp.nan_to_num(init_img*error_est*tv_factor)
+            # clear_output(wait=True)
+            # plt.imshow(tv_factor.get(),norm=colors.LogNorm())
+            # plt.show()
+            # print(init_img,error_est,tv_factor)
+            # plt.pause(2)
+
+            
+            # print('-----------------------------------------')
+        else:
+            init_img = init_img* error_est
     return init_img #recovered, deconvoluted, underlying object image
+
 
 def roi(image):
     #define a region of interest overwhich to perform deconvolution
@@ -290,6 +306,43 @@ def plot_q_radial_avg(image):
     plt.xlabel('q (nm$^{-1}$)')
     plt.show()
 
+def normalize_log(image):
+    #normalized based on log-normal distribution
+    #https://en.wikipedia.org/wiki/Log-normal_distribution
+    mean=np.mean(image)
+    std=np.std(image)
+    meanlog=np.log(mean**2/(np.sqrt(mean**2+std**2)))
+    stdlog=np.sqrt(np.log(1+(std**2/mean**2)))
+    return (image - meanlog) / stdlog
+
+
+def normalize_T(array):
+    #normalize based on mean and standard deviation
+    #noramlization using pytorch tensor transforms           
+    # plt.hist(array.ravel(), density=True)
+    # plt.show()
+    
+    array_T=torch.from_numpy(array)
+    mean, std = array_T.mean(),array_T.std()
+    # define custom transform
+    # here we are using our calculated
+    # mean & std
+    transform_norm = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean, std)
+    ])
+    # get normalized image
+    img_normalized = transform_norm(array)
+    # convert normalized image to numpy
+    # array
+    img_np = np.array(img_normalized)
+    # transpose from shape of (1,,) to shape of (,,1)
+    img_np = img_np.transpose(1, 2, 0)
+    # plt.imshow(img_np,norm=colors.LogNorm())
+    # plt.show()
+    return(img_np)
+
+
 
 def correlate(im1,im2):
     #calcuate 2D correlation of two images
@@ -308,7 +361,25 @@ def mae(y1, y2):
     return np.mean(np.abs(y1 - y2))
 
 
-def run(dp,probe,device=0):
+
+def total_variation_term(array1,alpha):
+    a=torch.tensor(array1)
+    da=torch.gradient(a) #size=2xnxn
+    da_mag=torch.sqrt(da[0]*da[0]+da[1]*da[1]) #nxn
+    #da_mag1=torch.hypot(da[0],da[1])
+    #print(da_mag1==da_mag)
+    dax_da=torch.gradient(da[0])[0]#nxn
+    day_da=torch.gradient(da[1])[1]#nxn
+    div=(dax_da+day_da)/da_mag#divergence term: nxn
+    result=1/(1-alpha*div)
+    result_array=np.nan_to_num(result.numpy())
+    # plt.imshow(result_array)
+    # print(result_array)
+    # plt.pause(3)
+    return result_array
+
+
+def run(dp,probe,device=2):
     with cp.cuda.Device(device):
         ##load in diffraction patterns (dps) data, including sample-to-detector distance (sdd) and xray wavelength (wavelength)
         #dps,sdd,wavelength = load_h5py_dp(dp)
@@ -318,10 +389,19 @@ def run(dp,probe,device=0):
         # #load in point-spread function (psf) (the probe) data, *npy data file
         # #the reconstructed probe from ptychography data
         # psf_real = np.load(probe,allow_pickle=True)
+        
+        
         psf_real=dps['dt'].T[0]
         
-
-
+        
+        psf_real=normalize_T(psf_real).squeeze()
+        # # to create an image file to save
+        # psf_real[psf_real == 0.] = np.nan
+        # logimage = np.log(psf_real+0.02)
+        # cv2.imwrite('images/test.png',logimage)
+        # plt.imshow(logimage)
+        # plt.show()
+        
         # #plt.imshow(np.abs(psf_real)) #magnitude
         # #plt.imshow(np.angle(psf_real)) #phase
         
@@ -335,7 +415,8 @@ def run(dp,probe,device=0):
         psf=psf_real
         
         #cv2.imwrite(directory+'psf.png',psf)
-        psf=roi(psf) #FOR JUST CENTER FZP PATTERN 
+        #235 42 235 42
+        #psf=roi(psf) #FOR JUST CENTER FZP PATTERN 
                     #BEAM: x,y: 118 21
         #psf=psf[118:139,118:139]
         #cv2.imwrite(directory+'psf.png',psf)
@@ -345,27 +426,44 @@ def run(dp,probe,device=0):
         
         #dps=np.asarray([np.sqrt(dp) for dp in dps])
         
-        
-        
         count=0
-        for dp in tqdm(dps['dt'].T):
+        for dp in tqdm(dps['dt'].T[149:150]):
             #write dp to image file and load in the image
             #cv2.imwrite('dp.png',dp)
-        
+            psf=dp[235:277,235:277] #roi(235,42,235,42)
+            #psf=normalize_T(psf).squeeze()
+            #psf=normalize_log(psf)
+            #psf=dp[205:307,205:307]
+
+            # dp=dp[190:320,190:320]
+            
+            #dp=normalize_T(dp).squeeze()
+            #dp=normalize_log(dp)
+            
+            #plotter([psf,dp],['psf','dp'],log=True)
+            
+            
+            # psf=normalize_log(psf)
+            # dp=normalize_log(dp)
+            
+            
+            
+            #plotter([psf,dp],['psf','dp'],log=True)
+            
             #process or done process ***
             #dp_image = cv2.imread('dp.png')
             #dp_image=process_dp('dp.png')
-        
+  
             #convert images to gray scale
             #dp_image_gray=dp_image
             # if processed, comment out this line ***
             #dp_image_gray = cv2.cvtColor(dp_image, cv2.COLOR_BGR2GRAY)
         
-        
             #deconvolute dp and PSF
-            iterations =50
+            iterations=100
             ##convert to cupy array
             #dp_gray=cp.asarray(dp_image_gray)
+            
             psf=cp.asarray(psf) 
             dp=cp.asarray(dp)
             
@@ -374,8 +472,12 @@ def run(dp,probe,device=0):
             #result = restoration.richardson_lucy(dp,psf,iterations)#,filter_epsilon=1)
             #result = restoration.wiener(dp_image_gray,psf,10000)
             #result = restoration.unsupervised_wiener(dp_image_gray,psf)[0]#,iterations)
-            result = RL_deconvblind(dp, psf, iterations)
+
             
+            #result = RL_deconvblind(dp, psf, iterations,TV=True)
+            result = RL_deconvblind(dp, psf, iterations,TV=False)
+            # TVcorr=correlate(result.get(),resultTV.get())
+
             # #get cupy arrays from GPU
             # result_norm=normal(result)
             # dp_gray_norm=normal(dp_gray)
@@ -389,24 +491,35 @@ def run(dp,probe,device=0):
             psf_cpu=psf.get()
             # psf_cpu=psf
             # result_cpu=result
+            
+
         
             #calculate time of deconvolution on GPU
             cp.cuda.Device(device).synchronize()
             stop_time = perf_counter( )
             time=str(round(stop_time-start_time,4))
             print("Computation time on GPU: "+time+" seconds")
-        
-            # plt.imshow(result_cpu,norm=colors.LogNorm())
-            # plt.show()
+            
             plotter([psf_cpu,dp_cpu,result_cpu],['psf','dp','recovered'],log=True)
-            bkg=10 #to get rid of zeros
-            plotter([psf_cpu+bkg,dp_cpu+bkg,result_cpu+bkg],['psf','dp','recovered'],log=True)
+            plotter([np.nan_to_num(psf_cpu),np.nan_to_num(dp_cpu),np.nan_to_num(result_cpu)],['psf nan2num','dp nan2num','recovered nan2num'],log=True)
+            
+            # bkg= np.min(result_cpu[np.nonzero(result_cpu)]) #to get rid of zero 
+            bkg=1e-1
+            #normalize_T(dp_cpu)
+            #plt.imshow((result_cpu - np.mean(result_cpu))/np.ptp(result_cpu),norm=colors.LogNorm())
+            #plt.show()            
+            
+            plotter([psf_cpu+abs(bkg),dp_cpu+abs(bkg),result_cpu+abs(bkg)],['psf (bkg)','dp (bkg)','recovered (bkg)'],log=True)
+            
+            
             # #save image
             # save='y'
             # if save == 'y':
             #      #out_filename="output_frame{}_iterations{}.png".format(frame,iterations)
-            #      out_filename=directory+"output_frame{}_iterations{}_skW.png".format(count,iterations)
-            #      cv2.imwrite(out_filename, result_cpu)
+            #      out_filename="tests/images/output_frame{}.png".format(count)
+            #      #cv2.imwrite(out_filename, result_cpu)
+            #      plt.imshow(result_cpu,norm=colors.LogNorm());
+            #      plt.savefig(out_filename)
             #      print("Plots written to "+out_filename)
             # else:
             #      print("Plots not saved")
@@ -420,26 +533,28 @@ def run(dp,probe,device=0):
         # dps=dps_filtered
         
         #SHOW PROGRESSION OF DECONVOLUTION WITH MORE DP FRAMES
-        iterations=50
-        num_frames=len(dps)
-        start=len(dps)-1
-        psf=cp.asarray(psf)
-        #for i in tqdm(range(start,len(dps[:num_frames]))):
-        
-        for i in range(start,len(dps[:num_frames])):
+        more=False
+        if more:
+            iterations=50
+            num_frames=len(dps)
+            start=len(dps)-1
+            psf=cp.asarray(psf)
+            #for i in tqdm(range(start,len(dps[:num_frames]))):
             
-            dp=cp.asarray(avg_frames(dps[0:i],i))
-            result = RL_deconvblind(dp, psf, iterations)
-            result_cpu=result.get()
-            clear_output(wait=True)
-            plt.imshow(result_cpu,norm=colors.LogNorm())
-            plt.show()
-            #plt.pause(0.2)
-        dp_cpu=dp.get()
-        psf_cpu=psf.get()
-        plotter([psf_cpu,dp_cpu,result_cpu],['psf','dp','recovered'],log=True)
-        # cv2.imwrite('dp.png',dp_cpu)
-        # np.save('dp.npy',dp_cpu)
-        # cv2.imwrite('recovered.png',result_cpu)
-        # np.save('recovered.npy',result_cpu)
+            for i in range(start,len(dps[:num_frames])):
+                
+                dp=cp.asarray(avg_frames(dps[0:i],i))
+                result = RL_deconvblind(dp, psf, iterations)
+                result_cpu=result.get()
+                clear_output(wait=True)
+                plt.imshow(result_cpu,norm=colors.LogNorm())
+                plt.show()
+                #plt.pause(0.2)
+            dp_cpu=dp.get()
+            psf_cpu=psf.get()
+            plotter([psf_cpu,dp_cpu,result_cpu],['psf','dp','recovered'],log=True)
+            # cv2.imwrite('dp.png',dp_cpu)
+            # np.save('dp.npy',dp_cpu)
+            # cv2.imwrite('recovered.png',result_cpu)
+            # np.save('recovered.npy',result_cpu)
         return result_cpu

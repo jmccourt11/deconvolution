@@ -12,3 +12,8 @@ conda activate <environment_name>
 <!--- pip install -r /path/to/requirements.txt --->
 
 pip install -e /path/to/deconvolution_JMM/
+
+
+To update personal access token in github:
+Open .git/config and change url to appropriate personal access token
+https://[token]@github*

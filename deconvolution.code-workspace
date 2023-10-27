@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../deconvolution_scratch"
+		}
+	],
+	"settings": {
+		"git.ignoreLimitWarning": true
+	}
+}

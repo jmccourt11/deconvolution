@@ -2,10 +2,12 @@
 import sys
 import os
 import importlib
+import numpy as np
 #basedir=os.getcwd()
 sys.path.insert(0, '/home/beams0/B304014/ptychosaxs/deconvolution/')
 import deconvolution_JMM.deconvolve as dc
 importlib.reload(dc)
+
 
 if __name__ == '__main__':
     
@@ -19,7 +21,10 @@ if __name__ == '__main__':
     dp_file='/home/beams/B304014/ptychosaxs/chansong/ckim_data585_766.mat'
     #235 42 235 42
     probe_file='/home/beams/B304014/ptychosaxs/chansong/ckim_data585_766.mat'
-    recovered=dc.run(dp_file,probe_file)
+    #recovered=dc.run(dp_file,probe_file)
+    #recovered2=dc.run(np.load('../interpolated.npy'),probe_file)
+    import scipy.io
+    recovered=dc.run(scipy.io.loadmat(dp_file)['dt'].T,probe_file)
     #%%
     #%%
     x=dc.Deconvolve('mat',dp_file,[[1,0],[0,1]])

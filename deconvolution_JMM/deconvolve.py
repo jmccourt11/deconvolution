@@ -374,7 +374,7 @@ def interpolate(dp,cmap='jet'):
 #def load_h5py_dp(file):
     #now named load_data_h5
         
-
+    
 def flip180(arr):
     #inverts 2D array, used to invert probe array for Richardson Lucy deconvoltuion algorithm
     new_arr = arr.reshape(arr.size)
@@ -912,22 +912,13 @@ def run(dps,probe,device=1):
             # np.save('dp.npy',dp_cpu)
             # cv2.imwrite('recovered.png',result_cpu)
             # np.save('recovered.npy',result_cpu)
-<<<<<<< HEAD
-<<<<<<< Updated upstream
         return result_cpu
-=======
-=======
->>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
                     
         
         #final = {'img':result_mtx.,'phi':dps['phi'].squeeze()}
         final = {'img':result_mtx,'phi':phis}
         #save *mat file for matlab
-<<<<<<< HEAD
         #scipy.io.savemat("output.mat",final)
-=======
-        scipy.io.savemat("output.mat",final)
->>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
         return final
     
     
@@ -937,9 +928,5 @@ def run(dps,probe,device=1):
 # for i in range(0,len(mat['dt'])):
 #     for j in range(0,len(mat['dt'][i])):
 #         for k in range(0,len(mat['dt'][i][j])):
-<<<<<<< HEAD
 #             test[i][j][k] = mat['dt'][i][j][k]
->>>>>>> Stashed changes
-=======
 #             test[i][j][k] = mat['dt'][i][j][k]
->>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12

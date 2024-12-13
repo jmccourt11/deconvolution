@@ -31,6 +31,7 @@ from skimage.registration import phase_cross_correlation
 import torch
 from torchvision import transforms
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 def load_h5py_dp(file):
     #file format for diffraction pattern data is hdf5 (hierarchical data format)
@@ -52,6 +53,9 @@ def load_h5py_dp(file):
 =======
 from scipy.interpolate import griddata
 from xml import dom
+=======
+
+>>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
 #TO USE MATLAB WRAPPER, WILL HAVE TO SET THIS UP ON "USER" REFINER
 #import matlab.engine
 #eng=matlab.engine()
@@ -70,25 +74,22 @@ class Deconvolve:
         else:
             print('Invalid filetype (need h5 or mat)')
         self.probe=probe
+<<<<<<< HEAD
 >>>>>>> Stashed changes
+=======
+>>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
     
-def flip180(arr):
-    #inverts 2D array, used to invert probe array for Richardson Lucy deconvoltuion algorithm
-    new_arr = arr.reshape(arr.size)
-    new_arr = new_arr[::-1]
-    new_arr = new_arr.reshape(arr.shape)
-    return new_arr
+    def __repr__(self):
+        return f'Deconvolve(DP: {self.dp!r}, Probe: {self.probe!r})'
 
-def normal_gray(array):
-    #normalize image to gray scale
-    array = array/cp.amax(array)*255
-    array = cp.where(array < 0,  0, array)
-    array = cp.where(array > 255, 255, array)
-    array = array.astype(cp.int16)
-    return array
+    #def __iter__(self):
+    #def __next__(self):
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
+=======
+>>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
     def load_data_mat(self,filename):
         #load in an mat (MATLAB) diffraction patterns file
         return scipy.io.loadmat(filename)
@@ -174,16 +175,26 @@ def normal_gray(array):
         return np.abs(np.fft.fftshift(np.fft.fft2(image)))**2
     
     
+<<<<<<< HEAD
     def plotter(self,images,labels,cmap='jet',log=False):
+=======
+    def plotter(self,images,labels,log=False):
+>>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
         # display n plots side by side
         n=len(images)
         fig, axes = plt.subplots(1, n, figsize=(8, 3))#, sharex=True, sharey=True)
         ax = axes.ravel()
         for i in range(0,n):
             if log:
+<<<<<<< HEAD
                 ax[i].imshow(images[i],norm=colors.LogNorm(),clim=(1,1000),cmap=cmap)
             else:
                 ax[i].imshow(images[i],cmap=cmap)
+=======
+                ax[i].imshow(images[i],norm=colors.LogNorm(),clim=(1,1000))
+            else:
+                ax[i].imshow(images[i])
+>>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
             #ax[i].axis('off')
             ax[i].set_title(labels[i])
         plt.show()
@@ -302,7 +313,10 @@ def normal_gray(array):
     
     
   
+<<<<<<< HEAD
 >>>>>>> Stashed changes
+=======
+>>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
 def RL_deconvblind(img,PSF,iterations,verbose=False,TV=False):
     #Richardson Lucy (RL) algorithm for deconvoluting a measured image with a known point-spread-function image to return underlying object image
     if verbose:
@@ -327,6 +341,7 @@ def RL_deconvblind(img,PSF,iterations,verbose=False,TV=False):
         error_est = conv2(relative_blur,PSF_hat, 'same',boundary='symm')
         if TV:
             alpha=0.001 #regularization term weight
+            #alpha=0.001
             tv_factor=cp.asarray(total_variation_term(init_img,alpha))
             # print(init_img,error_est,tv_factor)
             # plt.pause(2)
@@ -344,6 +359,7 @@ def RL_deconvblind(img,PSF,iterations,verbose=False,TV=False):
     return init_img #recovered, deconvoluted, underlying object image
 
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
 
@@ -387,6 +403,12 @@ def interpolate(dp,cmap='jet'):
             
 
 
+=======
+
+#def load_h5py_dp(file):
+    #now named load_data_h5
+        
+>>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
     
 def flip180(arr):
     #inverts 2D array, used to invert probe array for Richardson Lucy deconvoltuion algorithm
@@ -404,7 +426,10 @@ def normal_gray(array):
     return array
 
 
+<<<<<<< HEAD
 >>>>>>> Stashed changes
+=======
+>>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
 def roi(image):
     #define a region of interest overwhich to perform deconvolution
     #requires prompted raw input from the user: (startX, deltaX), (startY, deltaY)
@@ -453,11 +478,15 @@ def plotter(images,labels,cmap='jet',log=False):
     ax = axes.ravel()
     for i in range(0,n):
         if log:
+<<<<<<< HEAD
 <<<<<<< Updated upstream
             ax[i].imshow(images[i],norm=colors.LogNorm())
 =======
             ax[i].imshow(images[i],norm=colors.LogNorm(),clim=(1,1000),cmap=cmap)
 >>>>>>> Stashed changes
+=======
+            ax[i].imshow(images[i],norm=colors.LogNorm(),clim=(1,1000))
+>>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
         else:
             ax[i].imshow(images[i])
         #ax[i].axis('off')
@@ -525,6 +554,19 @@ def avg_frames(dp_list,total_frames,live_plot=False):
         total+=dp
     return total/total_frames  #returns total sum of dp frames/number of summed frames
 
+def live_plot_images(images):
+    #live plot
+    #plt.figure()
+    for x in images[:]:
+        try:
+            plt.imshow(x,norm=colors.LogNorm())
+            plt.clim(1,1000)
+            clear_output(wait=True)
+            plt.pause(.3)
+            plt.clf()
+        except KeyboardInterrupt:
+            break
+    plt.show()
 
 
 def hor_line_profile(image, line):
@@ -534,7 +576,7 @@ def hor_line_profile(image, line):
     profile = profile_line(image, start, end)
     fig, ax = plt.subplots(1, 2)
     ax[0].set_title('Image (log)')
-    ax[0].imshow(image,norm=colors.LogNorm())
+    ax[0].imshow(image,norm=colors.LogNorm(),clim=(1,1000))
     ax[0].plot([start[1], end[1]], [start[0], end[0]], 'r')
     ax[1].set_title('Profile (log)')
     ax[1].set_yscale('log')
@@ -552,7 +594,7 @@ def vert_line_profile(image, line):
     profile = profile_line(image, start, end)
     fig, ax = plt.subplots(1, 2)
     ax[0].set_title('Image (log)')
-    ax[0].imshow(image,norm=colors.LogNorm())
+    ax[0].imshow(image,norm=colors.LogNorm(),clim=(1,1000))
     ax[0].plot([start[1], end[1]], [start[0], end[0]], 'r')
     ax[1].set_title('Profile (log)')
     ax[1].set_yscale('log')
@@ -683,22 +725,27 @@ def total_variation_term(array1,alpha):
     return result_array
 
 
-def run(dp,probe,device=2):
+def run(dps,probe,device=1):
     with cp.cuda.Device(device):
         ##load in diffraction patterns (dps) data, including sample-to-detector distance (sdd) and xray wavelength (wavelength)
         #dps,sdd,wavelength = load_h5py_dp(dp)
         
-        dps=scipy.io.loadmat('/home/beams/B304014/ptychosaxs/chansong/ckim_data585_766.mat')
+        #dps=scipy.io.loadmat('/home/beams/B304014/ptychosaxs/chansong/ckim_data585_766.mat')
+        phis=scipy.io.loadmat('/home/beams/B304014/ptychosaxs/chansong/ckim_data585_766.mat')['phi'].squeeze()
+        phis = np.delete(phis,[112,113])       
+        print(len(phis))
         
         # #load in point-spread function (psf) (the probe) data, *npy data file
         # #the reconstructed probe from ptychography data
         # psf_real = np.load(probe,allow_pickle=True)
         
         
-        psf_real=dps['dt'].T[0]
+        #psf_real=dps['dt'].T[0]
+
+        psf_real=dps[0]
         
         
-        psf_real=normalize_T(psf_real).squeeze()
+        #psf_real=normalize_T(psf_real).squeeze()
         # # to create an image file to save
         # psf_real[psf_real == 0.] = np.nan
         # logimage = np.log(psf_real+0.02)
@@ -731,10 +778,45 @@ def run(dp,probe,device=2):
         #dps=np.asarray([np.sqrt(dp) for dp in dps])
         
         count=0
-        for dp in tqdm(dps['dt'].T[149:150]):
+        #result_mtx=np.zeros((len(dps['dt']),len(dps['dt'][0]),len(dps['dt'][0][0])))
+        result_mtx=np.zeros((len(dps[0]),len(dps[0][0]),len(dps)))
+        
+        
+        result_test=[]
+        
+        psf=dps[111][230:284,230:284]
+        plt.imshow(psf,norm=colors.LogNorm())
+        plt.clim(1,1000)
+        plt.show()
+        
+        #crop probe
+        probe_gray=(psf*255/np.max(psf)).astype(np.uint8)
+        bgr = cv2.cvtColor(probe_gray, cv2.COLOR_GRAY2BGR)
+        img = cv2.cvtColor(bgr,cv2.COLOR_BGR2RGB)
+        img = cv2.resize(img,(256,256))
+        gray = cv2.cvtColor(img,cv2.COLOR_RGB2GRAY)
+        _,thresh = cv2.threshold(gray, np.mean(gray), 255, cv2.THRESH_BINARY_INV)
+        edges = cv2.dilate(cv2.Canny(thresh,0,255),None)
+        cnt = sorted(cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[-2], key=cv2.contourArea)[-1]
+        mask = np.zeros((256,256), np.uint8)
+        masked = cv2.drawContours(mask, [cnt],-1, 255, -1)
+        mask_2=cv2.resize(mask,psf.shape)
+        psf_masked=cv2.bitwise_and(psf,psf,mask=mask_2)
+        plt.imshow(psf_masked,norm=colors.LogNorm())
+        plt.clim(1,1000)
+        plt.show()
+        psf=psf_masked
+
+        
+        #for dp in tqdm(dps['dt'].T):
+        for dp in tqdm(dps):
             #write dp to image file and load in the image
             #cv2.imwrite('dp.png',dp)
-            psf=dp[235:277,235:277] #roi(235,42,235,42)
+            
+            #psf=dp[230:284,230:284] #roi(235,42,235,42)
+            
+            #psf=dp[235:277,235:277] 
+            
             #psf=normalize_T(psf).squeeze()
             #psf=normalize_log(psf)
             #psf=dp[205:307,205:307]
@@ -764,7 +846,7 @@ def run(dp,probe,device=2):
             #dp_image_gray = cv2.cvtColor(dp_image, cv2.COLOR_BGR2GRAY)
         
             #deconvolute dp and PSF
-            iterations=100
+            iterations=50
             ##convert to cupy array
             #dp_gray=cp.asarray(dp_image_gray)
             
@@ -804,10 +886,12 @@ def run(dp,probe,device=2):
             cp.cuda.Device(device).synchronize()
             stop_time = perf_counter( )
             time=str(round(stop_time-start_time,4))
-            print("Computation time on GPU: "+time+" seconds")
             
-            plotter([psf_cpu,dp_cpu,result_cpu],['psf','dp','recovered'],log=True)
-            plotter([np.nan_to_num(psf_cpu),np.nan_to_num(dp_cpu),np.nan_to_num(result_cpu)],['psf nan2num','dp nan2num','recovered nan2num'],log=True)
+            #print("Computation time on GPU: "+time+" seconds")
+            
+            if count==1:
+                plotter([psf_cpu,dp_cpu,result_cpu],['psf','dp','recovered'],log=True)
+            #plotter([np.nan_to_num(psf_cpu),np.nan_to_num(dp_cpu),np.nan_to_num(result_cpu)],['psf nan2num','dp nan2num','recovered nan2num'],log=True)
             
             # bkg= np.min(result_cpu[np.nonzero(result_cpu)]) #to get rid of zero 
             bkg=1e-1
@@ -815,7 +899,7 @@ def run(dp,probe,device=2):
             #plt.imshow((result_cpu - np.mean(result_cpu))/np.ptp(result_cpu),norm=colors.LogNorm())
             #plt.show()            
             
-            plotter([psf_cpu+abs(bkg),dp_cpu+abs(bkg),result_cpu+abs(bkg)],['psf (bkg)','dp (bkg)','recovered (bkg)'],log=True)
+            #plotter([psf_cpu+abs(bkg),dp_cpu+abs(bkg),result_cpu+abs(bkg)],['psf (bkg)','dp (bkg)','recovered (bkg)'],log=True)
             
             
             # #save image
@@ -829,6 +913,15 @@ def run(dp,probe,device=2):
             #      print("Plots written to "+out_filename)
             # else:
             #      print("Plots not saved")
+        
+            # for i in range(0,len(dps['dt'])):
+            #     for j in range(0,len(dps['dt'][i])):
+            #         result_mtx[j][i][count] = result_cpu[i][j] #loaded with transpose so need to flip again i <-> j
+            for i in range(0,len(dps[count])):
+                 for j in range(0,len(dps[count][i])):
+                     result_mtx[j][i][count] = result_cpu[i][j] #loaded with transpose so need to flip again i <-> j
+            
+            result_test.append(result_cpu)
             
             count+=1
         
@@ -863,15 +956,22 @@ def run(dp,probe,device=2):
             # np.save('dp.npy',dp_cpu)
             # cv2.imwrite('recovered.png',result_cpu)
             # np.save('recovered.npy',result_cpu)
+<<<<<<< HEAD
 <<<<<<< Updated upstream
         return result_cpu
 =======
+=======
+>>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
                     
         
         #final = {'img':result_mtx.,'phi':dps['phi'].squeeze()}
         final = {'img':result_mtx,'phi':phis}
         #save *mat file for matlab
+<<<<<<< HEAD
         #scipy.io.savemat("output.mat",final)
+=======
+        scipy.io.savemat("output.mat",final)
+>>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
         return final
     
     
@@ -881,5 +981,9 @@ def run(dp,probe,device=2):
 # for i in range(0,len(mat['dt'])):
 #     for j in range(0,len(mat['dt'][i])):
 #         for k in range(0,len(mat['dt'][i][j])):
+<<<<<<< HEAD
 #             test[i][j][k] = mat['dt'][i][j][k]
 >>>>>>> Stashed changes
+=======
+#             test[i][j][k] = mat['dt'][i][j][k]
+>>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12

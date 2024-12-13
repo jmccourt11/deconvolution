@@ -31,8 +31,6 @@ from skimage.registration import phase_cross_correlation
 import torch
 from torchvision import transforms
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
 def load_h5py_dp(file):
     #file format for diffraction pattern data is hdf5 (hierarchical data format)
     with h5py.File(file,"r") as f:    
@@ -50,12 +48,9 @@ def load_h5py_dp(file):
     return ds_arr,sdd,wavelength #return tuple consisting of np.array of dps, sdd, wavelength
         
 
-=======
 from scipy.interpolate import griddata
 from xml import dom
-=======
 
->>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
 #TO USE MATLAB WRAPPER, WILL HAVE TO SET THIS UP ON "USER" REFINER
 #import matlab.engine
 #eng=matlab.engine()
@@ -74,22 +69,13 @@ class Deconvolve:
         else:
             print('Invalid filetype (need h5 or mat)')
         self.probe=probe
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
-    
+
     def __repr__(self):
         return f'Deconvolve(DP: {self.dp!r}, Probe: {self.probe!r})'
 
     #def __iter__(self):
     #def __next__(self):
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
     def load_data_mat(self,filename):
         #load in an mat (MATLAB) diffraction patterns file
         return scipy.io.loadmat(filename)
@@ -175,26 +161,16 @@ class Deconvolve:
         return np.abs(np.fft.fftshift(np.fft.fft2(image)))**2
     
     
-<<<<<<< HEAD
     def plotter(self,images,labels,cmap='jet',log=False):
-=======
-    def plotter(self,images,labels,log=False):
->>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
         # display n plots side by side
         n=len(images)
         fig, axes = plt.subplots(1, n, figsize=(8, 3))#, sharex=True, sharey=True)
         ax = axes.ravel()
         for i in range(0,n):
             if log:
-<<<<<<< HEAD
                 ax[i].imshow(images[i],norm=colors.LogNorm(),clim=(1,1000),cmap=cmap)
             else:
                 ax[i].imshow(images[i],cmap=cmap)
-=======
-                ax[i].imshow(images[i],norm=colors.LogNorm(),clim=(1,1000))
-            else:
-                ax[i].imshow(images[i])
->>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
             #ax[i].axis('off')
             ax[i].set_title(labels[i])
         plt.show()
@@ -312,11 +288,7 @@ class Deconvolve:
     
     
     
-  
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
+
 def RL_deconvblind(img,PSF,iterations,verbose=False,TV=False):
     #Richardson Lucy (RL) algorithm for deconvoluting a measured image with a known point-spread-function image to return underlying object image
     if verbose:
@@ -359,10 +331,6 @@ def RL_deconvblind(img,PSF,iterations,verbose=False,TV=False):
     return init_img #recovered, deconvoluted, underlying object image
 
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-
 #def load_h5py_dp(file):
     #now named load_data_h5
 
@@ -403,13 +371,10 @@ def interpolate(dp,cmap='jet'):
             
 
 
-=======
-
 #def load_h5py_dp(file):
     #now named load_data_h5
         
->>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
-    
+
 def flip180(arr):
     #inverts 2D array, used to invert probe array for Richardson Lucy deconvoltuion algorithm
     new_arr = arr.reshape(arr.size)
@@ -426,10 +391,7 @@ def normal_gray(array):
     return array
 
 
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
+
 def roi(image):
     #define a region of interest overwhich to perform deconvolution
     #requires prompted raw input from the user: (startX, deltaX), (startY, deltaY)
@@ -478,15 +440,9 @@ def plotter(images,labels,cmap='jet',log=False):
     ax = axes.ravel()
     for i in range(0,n):
         if log:
-<<<<<<< HEAD
-<<<<<<< Updated upstream
             ax[i].imshow(images[i],norm=colors.LogNorm())
-=======
             ax[i].imshow(images[i],norm=colors.LogNorm(),clim=(1,1000),cmap=cmap)
->>>>>>> Stashed changes
-=======
             ax[i].imshow(images[i],norm=colors.LogNorm(),clim=(1,1000))
->>>>>>> e2c5a0a9de4800a1657e831e020710cd35a4dc12
         else:
             ax[i].imshow(images[i])
         #ax[i].axis('off')
